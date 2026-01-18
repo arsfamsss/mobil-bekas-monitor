@@ -162,65 +162,6 @@ class MobilMonitorBot:
         except Exception as e:
             logger.error(f"Error saat pengecekan: {e}")
 
-            # Kirim notifikasi error (dengan anti-spam)
-            notifier.notify_error(
-                error_type='fetch_error',
-                error_message=str(e)
-            )
-
-    def run(self) -> None:
-        """Jalankan bot loop utama."""
-        logger.info("=" * 60)
-        logger.info("BOT MONITOR MOBIL BEKAS - STARTED")
-        logger.info("=" * 60)
-
-        # Validasi config
-        if not self.validate_config():
-            logger.error("Gagal start: konfigurasi tidak valid")
-            sys.exit(1)
-
-        # Print config
-        config.print_config()
-
-        # Kirim notifikasi startup
-        notifier.notify_startup()
-
-        logger.info(f"Interval check: {config.CHECK_INTERVAL_SECONDS} detik")
-        logger.info("Tekan Ctrl+C untuk stop\n")
-
-        try:
-            while self.running:
-                self.run_check()
-
-                # Log stats setiap 10 check
-                if self.check_count % 10 == 0:
-                    stats = storage.get_stats()
-                    logger.info(f"Stats: {stats}")
-
-                # Tunggu interval
-                logger.info(f"Menunggu {config.CHECK_INTERVAL_SECONDS} detik...\n")
-                time.sleep(config.CHECK_INTERVAL_SECONDS)
-
-        except KeyboardInterrupt:
-            logger.info("\nBot dihentikan oleh user (Ctrl+C)")
-
-        except Exception as e:
-            logger.error(f"Bot error: {e}")
-            notifier.notify_error('bot_crash', str(e))
-
-        finally:
-            self.shutdown()
-
-    def shutdown(self) -> None:
-        """Shutdown bot dengan bersih."""
-        logger.info("=" * 60)
-        logger.info("BOT MONITOR MOBIL BEKAS - STOPPED")
-        logger.info(f"Total checks: {self.check_count}")
-        logger.info(f"Total listings baru: {self.new_listings_count}")
-        logger.info("=" * 60)
-
-
-# =============================================================================
 # MAIN
 # =============================================================================
 def main():

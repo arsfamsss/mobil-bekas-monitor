@@ -22,10 +22,10 @@ class Config:
     TELEGRAM_CHAT_ID: str = os.getenv('TELEGRAM_CHAT_ID', '')
 
     # Search URLs
-    OLX_SEARCH_URL: str = os.getenv(
-        'OLX_SEARCH_URL',
-        'https://www.olx.co.id/mobil-bekas_c198/q-avanza-veloz'
-    )
+    OLX_SEARCH_URL: str = os.getenv('OLX_SEARCH_URL', '')
+    MOBIL123_SEARCH_URL: str = os.getenv('MOBIL123_SEARCH_URL', 'None')
+    CARMUDI_SEARCH_URL: str = os.getenv('CARMUDI_SEARCH_URL', 'None')
+    JUALO_SEARCH_URL: str = os.getenv('JUALO_SEARCH_URL', 'None')
 
     # Timing Configuration
     CHECK_INTERVAL_SECONDS: int = int(os.getenv('CHECK_INTERVAL_SECONDS', '180'))
