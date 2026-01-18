@@ -32,6 +32,19 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# USER AGENT ROTATION - untuk menghindari deteksi bot
+# =============================================================================
+USER_AGENTS = [
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15',
+    'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+]
+
+
+# =============================================================================
 # SELECTORS - Update di sini jika OLX mengubah struktur HTML
 # =============================================================================
 SELECTORS = {
@@ -80,7 +93,11 @@ class OLXFetcher:
             search_url: URL pencarian OLX. Default dari config.
         """
         self.search_url = search_url or config.OLX_SEARCH_URL
+        self._setup_session()
 
+    def _setup_session(self):
+        """Setup atau reset session dengan cloudscraper."""
+        import random
         # Gunakan cloudscraper untuk bypass Cloudflare, fallback ke requests
         if HAS_CLOUDSCRAPER:
             logger.info("Menggunakan cloudscraper (iOS Profile)")
@@ -95,22 +112,31 @@ class OLXFetcher:
             logger.warning("cloudscraper tidak tersedia, menggunakan requests biasa")
             self.session = requests.Session()
 
-        # Headers
+        # Rotate User-Agent
+        self._rotate_user_agent()
+
+    def _rotate_user_agent(self):
+        """Rotate User-Agent untuk menghindari deteksi bot."""
+        import random
+        ua = random.choice(USER_AGENTS)
         self.session.headers.update({
-            'User-Agent': config.USER_AGENT,
+            'User-Agent': ua,
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache',
+            'Referer': 'https://www.olx.co.id/',
         })
 
-    def fetch_page(self, url: Optional[str] = None, max_retries: int = 3) -> Optional[str]:
+    def fetch_page(self, url: Optional[str] = None, max_retries: int = 4) -> Optional[str]:
         """
-        Fetch HTML dari URL dengan retry mechanism.
+        Fetch HTML dari URL dengan retry mechanism dan progressive timeout.
 
         Args:
             url: URL untuk di-fetch. Default: search_url
-            max_retries: Maksimal retry jika gagal
+            max_retries: Maksimal retry jika gagal (default 4)
 
         Returns:
             HTML content atau None jika gagal
@@ -122,27 +148,37 @@ class OLXFetcher:
 
         for attempt in range(max_retries):
             try:
-                # Random delay untuk menghindari rate limit (1-3 detik)
+                # Random delay untuk menghindari rate limit
                 if attempt > 0:
-                    delay = (2 ** attempt) + random.uniform(1, 3)
+                    delay = (2 ** attempt) + random.uniform(2, 5)
                     logger.info(f"Retry {attempt + 1}/{max_retries} setelah {delay:.1f} detik...")
                     time_module.sleep(delay)
+                    # Rotate User-Agent pada retry
+                    self._rotate_user_agent()
                 else:
                     # Initial delay sebelum request pertama
-                    time_module.sleep(random.uniform(0.5, 1.5))
+                    time_module.sleep(random.uniform(1, 2))
 
+                # Progressive timeout: timeout lebih besar pada retry
+                timeout = config.REQUEST_TIMEOUT + (attempt * 20)
+                
                 response = self.session.get(
                     target_url,
-                    timeout=config.REQUEST_TIMEOUT
+                    timeout=timeout
                 )
                 response.raise_for_status()
                 return response.text
 
+            except requests.exceptions.Timeout as e:
+                logger.warning(f"Attempt {attempt + 1}/{max_retries} timeout (timeout={timeout}s): {e}")
+            except requests.exceptions.ConnectionError as e:
+                logger.warning(f"Attempt {attempt + 1}/{max_retries} connection error: {e}")
             except requests.RequestException as e:
                 logger.warning(f"Attempt {attempt + 1}/{max_retries} gagal: {e}")
-                if attempt == max_retries - 1:
-                    logger.error(f"Gagal fetch OLX setelah {max_retries} attempts")
-                    return None
+                
+            if attempt == max_retries - 1:
+                logger.error(f"Gagal fetch OLX setelah {max_retries} attempts")
+                return None
 
         return None
 

@@ -6,8 +6,8 @@ import os
 
 urls = {
     "MOBIL123_SEARCH_URL": "https://www.mobil123.com/mobil-dijual/toyota/avanza/indonesia?year_min=2019&year_max=2021&price_min=120000000&price_max=190000000",
-    "CARMUDI_SEARCH_URL": "https://www.carmudi.co.id/mobil-dijual/toyota/avanza/indonesia?year_min=2019&year_max=2021&price_min=120000000&price_max=190000000",
-    "JUALO_SEARCH_URL": "https://www.jualo.com/mobil-bekas-toyota-avanza/indonesia?price_min=120000000&price_max=190000000"
+    "CARMUDI_SEARCH_URL": "https://www.carmudi.co.id/cars/toyota/avanza/?condition=used&year_from=2019&year_to=2021&price_from=120000000&price_to=190000000",
+    "JUALO_SEARCH_URL": "https://www.jualo.com/mobil-bekas/toyota+avanza?ob=date&o=desc"
 }
 
 env_path = ".env"

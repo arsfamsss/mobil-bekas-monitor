@@ -75,26 +75,32 @@ def main():
     
     fetchers = []
     
-    # Safely create fetchers
-    try: 
-        fetchers.append(create_olx_fetcher()) 
-        logger.info("- OLX Fetcher: OK")
-    except Exception as e: logger.error(f"- OLX Fetcher: ERROR ({e})")
-
-    try: 
-        fetchers.append(create_mobil123_fetcher()) 
-        logger.info("- Mobil123 Fetcher: OK")
-    except Exception as e: logger.error(f"- Mobil123 Fetcher: ERROR ({e})")
-        
+    # Safely create fetchers - Prioritas: Carmudi & Mobil123
+    # OLX dan Jualo dinonaktifkan sementara karena masalah server/network
+    
     try: 
         fetchers.append(create_carmudi_fetcher()) 
-        logger.info("- Carmudi Fetcher: OK")
+        logger.info("- Carmudi Fetcher: OK (PRIORITAS)")
     except Exception as e: logger.error(f"- Carmudi Fetcher: ERROR ({e})")
 
     try: 
-        fetchers.append(create_jualo_fetcher()) 
-        logger.info("- Jualo Fetcher: OK")
-    except Exception as e: logger.error(f"- Jualo Fetcher: ERROR ({e})")
+        fetchers.append(create_mobil123_fetcher()) 
+        logger.info("- Mobil123 Fetcher: OK (PRIORITAS)")
+    except Exception as e: logger.error(f"- Mobil123 Fetcher: ERROR ({e})")
+    
+    # OLX - Dinonaktifkan sementara (timeout karena blokir ISP)
+    # try: 
+    #     fetchers.append(create_olx_fetcher()) 
+    #     logger.info("- OLX Fetcher: OK")
+    # except Exception as e: logger.error(f"- OLX Fetcher: ERROR ({e})")
+    logger.info("- OLX Fetcher: DINONAKTIFKAN (blokir ISP)")
+
+    # Jualo - Dinonaktifkan sementara (server error 502)
+    # try: 
+    #     fetchers.append(create_jualo_fetcher()) 
+    #     logger.info("- Jualo Fetcher: OK")
+    # except Exception as e: logger.error(f"- Jualo Fetcher: ERROR ({e})")
+    logger.info("- Jualo Fetcher: DINONAKTIFKAN (server error)")
 
     matcher = ListingMatcher()
     storage = Storage()
