@@ -62,6 +62,8 @@ class OLXFetcher:
 
     SOURCE_NAME = 'olx'
     BASE_URL = 'https://www.olx.co.id'
+    # OLX Internal API - lebih stabil dari web scraping
+    API_URL = 'https://www.olx.co.id/api/relevance/v4/search'
 
     def __init__(self, search_url: Optional[str] = None):
         """
@@ -72,31 +74,56 @@ class OLXFetcher:
         """
         self.search_url = search_url or config.OLX_SEARCH_URL
         self.session = requests.Session()
-        self.session.headers.update(HEADERS)
+        # Headers untuk API request
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+            'Accept': 'application/json',
+            'Accept-Language': 'id-ID,id;q=0.9',
+            'Origin': 'https://www.olx.co.id',
+            'Referer': 'https://www.olx.co.id/',
+        })
 
-    def fetch_page(self, url: Optional[str] = None) -> Optional[str]:
+    def fetch_page(self, url: Optional[str] = None, max_retries: int = 3) -> Optional[str]:
         """
-        Fetch HTML dari URL.
+        Fetch HTML dari URL dengan retry mechanism.
 
         Args:
             url: URL untuk di-fetch. Default: search_url
+            max_retries: Maksimal retry jika gagal
 
         Returns:
             HTML content atau None jika gagal
         """
+        import random
+        import time as time_module
+
         target_url = url or self.search_url
 
-        try:
-            response = self.session.get(
-                target_url,
-                timeout=config.REQUEST_TIMEOUT
-            )
-            response.raise_for_status()
-            return response.text
+        for attempt in range(max_retries):
+            try:
+                # Random delay untuk menghindari rate limit (1-3 detik)
+                if attempt > 0:
+                    delay = (2 ** attempt) + random.uniform(1, 3)
+                    logger.info(f"Retry {attempt + 1}/{max_retries} setelah {delay:.1f} detik...")
+                    time_module.sleep(delay)
+                else:
+                    # Initial delay sebelum request pertama
+                    time_module.sleep(random.uniform(0.5, 1.5))
 
-        except requests.RequestException as e:
-            logger.error(f"Gagal fetch OLX: {e}")
-            return None
+                response = self.session.get(
+                    target_url,
+                    timeout=config.REQUEST_TIMEOUT
+                )
+                response.raise_for_status()
+                return response.text
+
+            except requests.RequestException as e:
+                logger.warning(f"Attempt {attempt + 1}/{max_retries} gagal: {e}")
+                if attempt == max_retries - 1:
+                    logger.error(f"Gagal fetch OLX setelah {max_retries} attempts")
+                    return None
+
+        return None
 
     def _extract_json_data(self, html: str) -> Optional[dict]:
         """
@@ -407,15 +434,163 @@ class OLXFetcher:
             logger.debug(f"Error parsing HTML card: {e}")
             return None
 
+    def _fetch_api(self, max_retries: int = 3) -> Optional[list[dict]]:
+        """
+        Fetch listings via OLX internal API.
+
+        Returns:
+            List of listing dicts atau None jika gagal
+        """
+        import random
+        import time as time_module
+        from urllib.parse import parse_qs, urlparse
+
+        # Parse filter dari search URL
+        parsed = urlparse(self.search_url)
+        path_parts = parsed.path.strip('/').split('/')
+
+        # Build API params
+        params = {
+            'category': '198',  # mobil-bekas
+            'facet_limit': '100',
+            'location': '1000001',  # Indonesia
+            'page': '0',
+            'platform': 'web-mobile',
+            'size': '40',
+            'user': 'xxxxxxxxx',
+        }
+
+        # Tambahkan query jika ada
+        if 'q-' in parsed.path or 'q=' in parsed.query:
+            # Extract query dari path atau query string
+            for part in path_parts:
+                if part.startswith('q-'):
+                    params['query'] = part[2:]
+                    break
+
+        # Tambahkan filter jika ada
+        if parsed.query:
+            qs = parse_qs(parsed.query)
+            if 'filter' in qs:
+                params['filter'] = qs['filter'][0]
+
+        for attempt in range(max_retries):
+            try:
+                if attempt > 0:
+                    delay = (2 ** attempt) + random.uniform(1, 3)
+                    logger.info(f"API Retry {attempt + 1}/{max_retries} setelah {delay:.1f} detik...")
+                    time_module.sleep(delay)
+                else:
+                    time_module.sleep(random.uniform(0.5, 1.5))
+
+                response = self.session.get(
+                    self.API_URL,
+                    params=params,
+                    timeout=config.REQUEST_TIMEOUT
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    items = data.get('data', [])
+                    if items:
+                        logger.info(f"API berhasil: {len(items)} items")
+                        return [self._parse_api_item(item) for item in items if item]
+                else:
+                    logger.warning(f"API response: {response.status_code}")
+
+            except Exception as e:
+                logger.warning(f"API attempt {attempt + 1}/{max_retries} gagal: {e}")
+
+        return None
+
+    def _parse_api_item(self, item: dict) -> Optional[dict]:
+        """Parse single item dari API response."""
+        try:
+            listing_id = str(item.get('id', ''))
+            if not listing_id:
+                return None
+
+            title = item.get('title', '')
+            price = item.get('price', {}).get('value', {}).get('raw', 0)
+
+            # Location
+            locations = item.get('locations_resolved', {})
+            location = locations.get('ADMIN_LEVEL_3_name', '') or locations.get('ADMIN_LEVEL_1_name', '')
+
+            # URL
+            url = item.get('mainInfo', {}).get('url', '')
+            if not url:
+                url = f"https://www.olx.co.id/item/{listing_id}"
+
+            # Image
+            images = item.get('images', [])
+            image_url = images[0].get('url', '') if images else ''
+
+            # Parameters
+            year = None
+            km = None
+            transmission = None
+            color = None
+
+            for param in item.get('parameters', []):
+                key = param.get('key', '').lower()
+                value = param.get('value', '')
+                value_name = param.get('value_name', value)
+
+                if 'year' in key:
+                    try:
+                        year = int(value)
+                    except (ValueError, TypeError):
+                        pass
+                elif 'mileage' in key:
+                    try:
+                        km_str = re.sub(r'[^\d]', '', str(value))
+                        km = int(km_str) if km_str else None
+                    except (ValueError, TypeError):
+                        pass
+                elif 'transmission' in key:
+                    transmission = str(value_name).lower()
+                elif 'color' in key:
+                    color = str(value_name).lower()
+
+            return {
+                'listing_id': listing_id,
+                'source': self.SOURCE_NAME,
+                'title': title,
+                'price': price,
+                'location': location,
+                'url': url,
+                'image_url': image_url,
+                'year': year,
+                'km': km,
+                'transmission': transmission,
+                'color': color,
+            }
+        except Exception as e:
+            logger.debug(f"Error parsing API item: {e}")
+            return None
+
     def fetch_listings(self) -> list[dict]:
         """
         Fetch dan parse semua listings dari OLX.
+        Coba API dulu, fallback ke web scraping.
 
         Returns:
             List of listing dicts
         """
         logger.info(f"Fetching OLX: {self.search_url[:80]}...")
 
+        # Method 1: Coba API dulu (lebih stabil)
+        logger.info("Mencoba OLX API...")
+        api_listings = self._fetch_api()
+        if api_listings:
+            valid_listings = [l for l in api_listings if l]
+            if valid_listings:
+                logger.info(f"Ditemukan {len(valid_listings)} listing dari API")
+                return valid_listings
+
+        # Method 2: Fallback ke web scraping
+        logger.info("API gagal, fallback ke web scraping...")
         html = self.fetch_page()
         if not html:
             logger.error("Gagal fetch halaman OLX")
