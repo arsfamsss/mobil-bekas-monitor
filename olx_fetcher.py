@@ -19,6 +19,13 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
+# Cloudscraper untuk bypass Cloudflare protection
+try:
+    import cloudscraper
+    HAS_CLOUDSCRAPER = True
+except ImportError:
+    HAS_CLOUDSCRAPER = False
+
 from config import config
 
 logger = logging.getLogger(__name__)
@@ -73,14 +80,27 @@ class OLXFetcher:
             search_url: URL pencarian OLX. Default dari config.
         """
         self.search_url = search_url or config.OLX_SEARCH_URL
-        self.session = requests.Session()
-        # Headers untuk API request
+
+        # Gunakan cloudscraper untuk bypass Cloudflare, fallback ke requests
+        if HAS_CLOUDSCRAPER:
+            logger.info("Menggunakan cloudscraper untuk bypass Cloudflare")
+            self.session = cloudscraper.create_scraper(
+                browser={
+                    'browser': 'chrome',
+                    'platform': 'android',
+                    'mobile': True
+                }
+            )
+        else:
+            logger.warning("cloudscraper tidak tersedia, menggunakan requests biasa")
+            self.session = requests.Session()
+
+        # Headers
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-            'Accept': 'application/json',
-            'Accept-Language': 'id-ID,id;q=0.9',
-            'Origin': 'https://www.olx.co.id',
-            'Referer': 'https://www.olx.co.id/',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
         })
 
     def fetch_page(self, url: Optional[str] = None, max_retries: int = 3) -> Optional[str]:
