@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config import config
-from matcher import Matcher
+from matcher import ListingMatcher
 from notifier_telegram import TelegramNotifier
 from storage import Storage
 
@@ -96,7 +96,7 @@ def main():
         logger.info("- Jualo Fetcher: OK")
     except Exception as e: logger.error(f"- Jualo Fetcher: ERROR ({e})")
 
-    matcher = Matcher()
+    matcher = ListingMatcher()
     storage = Storage()
     notifier = TelegramNotifier()
 
