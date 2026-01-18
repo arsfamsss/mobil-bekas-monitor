@@ -50,11 +50,11 @@ class Config:
     FILTER_COLOR: str = os.getenv('FILTER_COLOR', 'putih').lower()
 
     # Request Configuration
-    REQUEST_TIMEOUT: int = int(os.getenv('REQUEST_TIMEOUT', '30'))
+    REQUEST_TIMEOUT: int = int(os.getenv('REQUEST_TIMEOUT', '60'))
     USER_AGENT: str = os.getenv(
         'USER_AGENT',
-        'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 '
+        '(KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1'
     )
 
     @classmethod

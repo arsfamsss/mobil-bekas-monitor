@@ -83,11 +83,11 @@ class OLXFetcher:
 
         # Gunakan cloudscraper untuk bypass Cloudflare, fallback ke requests
         if HAS_CLOUDSCRAPER:
-            logger.info("Menggunakan cloudscraper untuk bypass Cloudflare")
+            logger.info("Menggunakan cloudscraper (iOS Profile)")
             self.session = cloudscraper.create_scraper(
                 browser={
                     'browser': 'chrome',
-                    'platform': 'android',
+                    'platform': 'ios',
                     'mobile': True
                 }
             )
@@ -97,6 +97,7 @@ class OLXFetcher:
 
         # Headers
         self.session.headers.update({
+            'User-Agent': config.USER_AGENT,
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
             'Cache-Control': 'no-cache',
