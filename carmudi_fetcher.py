@@ -64,7 +64,7 @@ class CarmudiFetcher:
             response = self.session.get(self.search_url, timeout=config.REQUEST_TIMEOUT)
             response.raise_for_status()
             
-            soup = BeautifulSoup(response.text, 'lxml')
+            soup = BeautifulSoup(response.text, 'html.parser')
             # Try multiple selectors as layout often changes
             cards = soup.select(SELECTORS['card'])
             if not cards:

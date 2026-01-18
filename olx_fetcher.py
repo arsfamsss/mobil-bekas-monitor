@@ -333,7 +333,7 @@ class OLXFetcher:
             List of listing dicts
         """
         listings = []
-        soup = BeautifulSoup(html, 'lxml')
+        soup = BeautifulSoup(html, 'html.parser')
 
         # Coba primary selector
         cards = soup.select(SELECTORS['listing_card'])

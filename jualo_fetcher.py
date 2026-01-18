@@ -54,7 +54,7 @@ class JualoFetcher:
             response = self.session.get(self.search_url, timeout=config.REQUEST_TIMEOUT)
             response.raise_for_status()
             
-            soup = BeautifulSoup(response.text, 'lxml')
+            soup = BeautifulSoup(response.text, 'html.parser')
             # Jualo selectors often involve 'post-card'
             cards = soup.select('.post-card, .col-6') # Generic grid cols
             
