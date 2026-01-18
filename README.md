@@ -42,18 +42,21 @@ Mobil Bekas Monitor/
 
 ### 1. Install Termux
 
-Download dari [F-Droid](https://f-droid.org/packages/com.termux/) (JANGAN dari Play Store).
+Download dari [F-Droid](https://f-droid.org/packages/com.termux/) (JANGAN dari Play Store karena versi lama).
 
 ### 2. Setup Termux
 
+Jalankan perintah ini satu per satu:
+
 ```bash
-# Update packages
+# 1. Update packages
 pkg update && pkg upgrade -y
 
-# Install dependencies
-pkg install python git tmux -y
+# 2. Install dependencies sistem
+# (cloudscraper butuh libxml2, libxslt, clang)
+pkg install python git tmux clang libxml2 libxslt libjpeg-turbo -y
 
-# Install pip (jika belum ada)
+# 3. Upgrade pip
 pip install --upgrade pip
 ```
 
@@ -63,8 +66,8 @@ pip install --upgrade pip
 # Masuk ke folder home
 cd ~
 
-# Clone dari GitHub (ganti dengan URL repo Anda)
-git clone https://github.com/USERNAME/mobil-bekas-monitor.git
+# Clone dari GitHub
+git clone https://github.com/arsfamsss/mobil-bekas-monitor.git
 
 # Masuk ke folder proyek
 cd mobil-bekas-monitor
