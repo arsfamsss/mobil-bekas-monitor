@@ -13,6 +13,9 @@ import sys
 import time
 from pathlib import Path
 
+# Fix untuk folder dengan spasi di nama
+sys.path.insert(0, str(Path(__file__).parent))
+
 from config import config
 from matcher import matcher
 from notifier_telegram import notifier
